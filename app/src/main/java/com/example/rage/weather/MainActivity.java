@@ -1,10 +1,12 @@
 package com.example.rage.weather;
 
+import android.app.FragmentManager;
 import android.graphics.Typeface;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,13 +38,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Typeface type;
     private TextView nameCity;
 
-    private ApiOpenWeather apiOpenWeather;
-
-
-    private String baseURL = "http://api.openweathermap.org";
-    private String appID = "199e51a7251d81ae172475ea5b313f94";
-    private String id = "524901";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -67,36 +62,37 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         nameCity = (TextView) findViewById(R.id.name_city);
         nameCity.setTypeface(type);
         nameCity.setTextSize(25);
+    }
 
-        Retrofit client = new Retrofit.Builder().baseUrl(baseURL).addConverterFactory(GsonConverterFactory.create()).build();
-        apiOpenWeather = client.create(ApiOpenWeather.class);
+    public AsyncFragment getAsyncFragment(){
 
+        FragmentManager fragmentManager = getFragmentManager();
+        AsyncFragment fragment =
+                (AsyncFragment) fragmentManager.
+                        findFragmentByTag(AsyncFragment.class.getName());
+
+        if (fragment == null) {
+            Log.v("fr1","creFrag");
+            fragment = new AsyncFragment();
+            fragmentManager.
+                    beginTransaction().
+                    add(fragment, AsyncFragment.class.getName()).
+                    commit();
+        }
+        return  fragment;
+    }
+
+    public void updateData(String city, List<com.example.rage.weather.retrofit.gson.List> weather){
+        nameCity.setText(city);
+        temperaturesAdapter.setData(weather);
     }
 
     @Override
     public void onClick(View v) {
 
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        getAsyncFragment().startGetWeatherTask(inputNameCity.getText().toString());
 
-        Call<AllWeather> weatherCall = apiOpenWeather.getWeather(inputNameCity.getText().toString(), id, appID);
-
-        weatherCall.enqueue(new Callback<AllWeather>() {
-            @Override
-            public void onResponse(Call<AllWeather> call, Response<AllWeather> response) {
-                if (response.isSuccessful()) {
-                    String city = response.body().getCity().getName();
-                    nameCity.setText(city);
-                    temperaturesAdapter.setData(response.body().getList());
-                } else {
-                    Toast.makeText(MainActivity.this, "City is not exist!", Toast.LENGTH_SHORT);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<AllWeather> call, Throwable t) {
-                t.printStackTrace();
-            }
-        });
     }
 
     private class TemperaturesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
